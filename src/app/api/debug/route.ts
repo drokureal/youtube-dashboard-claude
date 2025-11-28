@@ -44,14 +44,14 @@ export async function GET(request: NextRequest) {
   const endDate = format(now, 'yyyy-MM-dd')
   const startDate = format(subDays(now, 7), 'yyyy-MM-dd')
   
+  // Test 1: Using googleapis library
   const oauth2Client = getOAuth2Client()
   oauth2Client.setCredentials({ access_token: channel.access_token })
   
   const youtubeAnalytics = google.youtubeAnalytics({ version: 'v2', auth: oauth2Client })
   
-  // Test 1: Using channel==channelId
-  let result1 = null
-  let error1 = null
+  let libraryResult = null
+  let libraryError = null
   try {
     const { data } = await youtubeAnalytics.reports.query({
       ids: `channel==${channel.channel_id}`,
@@ -61,43 +61,99 @@ export async function GET(request: NextRequest) {
       dimensions: 'day',
       sort: 'day',
     })
-    result1 = data
+    libraryResult = data
   } catch (err: any) {
-    error1 = err.message
+    libraryError = err.message
   }
   
-  // Test 2: Using channel==MINE
-  let result2 = null
-  let error2 = null
+  // Test 2: Direct HTTP fetch to the API (bypassing googleapis library)
+  let fetchResult = null
+  let fetchError = null
   try {
-    const { data } = await youtubeAnalytics.reports.query({
-      ids: 'channel==MINE',
-      startDate,
-      endDate,
-      metrics: 'views,estimatedMinutesWatched,subscribersGained,subscribersLost,estimatedRevenue',
-      dimensions: 'day',
-      sort: 'day',
+    const apiUrl = new URL('https://youtubeanalytics.googleapis.com/v2/reports')
+    apiUrl.searchParams.set('ids', `channel==${channel.channel_id}`)
+    apiUrl.searchParams.set('startDate', startDate)
+    apiUrl.searchParams.set('endDate', endDate)
+    apiUrl.searchParams.set('metrics', 'views,estimatedMinutesWatched,subscribersGained,subscribersLost,estimatedRevenue')
+    apiUrl.searchParams.set('dimensions', 'day')
+    apiUrl.searchParams.set('sort', 'day')
+    
+    const response = await fetch(apiUrl.toString(), {
+      headers: {
+        'Authorization': `Bearer ${channel.access_token}`,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
     })
-    result2 = data
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      fetchError = `HTTP ${response.status}: ${errorText}`
+    } else {
+      fetchResult = await response.json()
+    }
   } catch (err: any) {
-    error2 = err.message
+    fetchError = err.message
   }
   
-  // Test 3: Without revenue (in case that's causing delay)
-  let result3 = null
-  let error3 = null
+  // Test 3: Direct HTTP fetch WITHOUT revenue metric
+  let fetchNoRevenueResult = null
+  let fetchNoRevenueError = null
   try {
-    const { data } = await youtubeAnalytics.reports.query({
-      ids: `channel==${channel.channel_id}`,
-      startDate,
-      endDate,
-      metrics: 'views,estimatedMinutesWatched,subscribersGained,subscribersLost',
-      dimensions: 'day',
-      sort: 'day',
+    const apiUrl = new URL('https://youtubeanalytics.googleapis.com/v2/reports')
+    apiUrl.searchParams.set('ids', `channel==${channel.channel_id}`)
+    apiUrl.searchParams.set('startDate', startDate)
+    apiUrl.searchParams.set('endDate', endDate)
+    apiUrl.searchParams.set('metrics', 'views,estimatedMinutesWatched,subscribersGained,subscribersLost')
+    apiUrl.searchParams.set('dimensions', 'day')
+    apiUrl.searchParams.set('sort', 'day')
+    
+    const response = await fetch(apiUrl.toString(), {
+      headers: {
+        'Authorization': `Bearer ${channel.access_token}`,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
     })
-    result3 = data
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      fetchNoRevenueError = `HTTP ${response.status}: ${errorText}`
+    } else {
+      fetchNoRevenueResult = await response.json()
+    }
   } catch (err: any) {
-    error3 = err.message
+    fetchNoRevenueError = err.message
+  }
+
+  // Test 4: Using channel==MINE instead of specific channel ID
+  let fetchMineResult = null
+  let fetchMineError = null
+  try {
+    const apiUrl = new URL('https://youtubeanalytics.googleapis.com/v2/reports')
+    apiUrl.searchParams.set('ids', 'channel==MINE')
+    apiUrl.searchParams.set('startDate', startDate)
+    apiUrl.searchParams.set('endDate', endDate)
+    apiUrl.searchParams.set('metrics', 'views,estimatedMinutesWatched,subscribersGained,subscribersLost')
+    apiUrl.searchParams.set('dimensions', 'day')
+    apiUrl.searchParams.set('sort', 'day')
+    
+    const response = await fetch(apiUrl.toString(), {
+      headers: {
+        'Authorization': `Bearer ${channel.access_token}`,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store',
+    })
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      fetchMineError = `HTTP ${response.status}: ${errorText}`
+    } else {
+      fetchMineResult = await response.json()
+    }
+  } catch (err: any) {
+    fetchMineError = err.message
   }
   
   return NextResponse.json({
@@ -111,20 +167,29 @@ export async function GET(request: NextRequest) {
       tokenLength: channel.access_token?.length,
       refreshTokenExists: !!channel.refresh_token,
     },
-    test1_channelId: {
-      dates: result1?.rows?.map((row: any) => row[0]) || [],
-      error: error1,
-      rowCount: result1?.rows?.length || 0,
+    test1_library: {
+      method: 'googleapis library',
+      dates: libraryResult?.rows?.map((row: any) => row[0]) || [],
+      error: libraryError,
+      rowCount: libraryResult?.rows?.length || 0,
     },
-    test2_MINE: {
-      dates: result2?.rows?.map((row: any) => row[0]) || [],
-      error: error2,
-      rowCount: result2?.rows?.length || 0,
+    test2_directFetch: {
+      method: 'direct HTTP fetch with revenue',
+      dates: fetchResult?.rows?.map((row: any) => row[0]) || [],
+      error: fetchError,
+      rowCount: fetchResult?.rows?.length || 0,
     },
     test3_noRevenue: {
-      dates: result3?.rows?.map((row: any) => row[0]) || [],
-      error: error3,
-      rowCount: result3?.rows?.length || 0,
+      method: 'direct HTTP fetch WITHOUT revenue',
+      dates: fetchNoRevenueResult?.rows?.map((row: any) => row[0]) || [],
+      error: fetchNoRevenueError,
+      rowCount: fetchNoRevenueResult?.rows?.length || 0,
+    },
+    test4_MINE: {
+      method: 'direct HTTP fetch with channel==MINE',
+      dates: fetchMineResult?.rows?.map((row: any) => row[0]) || [],
+      error: fetchMineError,
+      rowCount: fetchMineResult?.rows?.length || 0,
     },
   }, {
     headers: {
