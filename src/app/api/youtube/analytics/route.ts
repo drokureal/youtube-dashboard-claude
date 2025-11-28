@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
     previousEndDate = format(subDays(parseISO(startDate), 1), 'yyyy-MM-dd')
     previousStartDate = format(subDays(parseISO(startDate), daysDiff + 1), 'yyyy-MM-dd')
   } else {
-    endDate = format(subDays(new Date(), 1), 'yyyy-MM-dd') // Yesterday
+    endDate = format(new Date(), 'yyyy-MM-dd') // Today (API returns what's available)
     startDate = format(subDays(new Date(), days), 'yyyy-MM-dd')
-    previousEndDate = format(subDays(new Date(), days + 1), 'yyyy-MM-dd')
+    previousEndDate = format(subDays(new Date(), days), 'yyyy-MM-dd')
     previousStartDate = format(subDays(new Date(), days * 2), 'yyyy-MM-dd')
   }
   
@@ -130,6 +130,10 @@ export async function GET(request: NextRequest) {
     analytics: processedData,
     dateRange: { startDate, endDate },
     previousDateRange: { startDate: previousStartDate, endDate: previousEndDate },
+  }, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+    },
   })
 }
 
