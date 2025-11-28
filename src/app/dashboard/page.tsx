@@ -12,9 +12,8 @@ import { ChannelBreakdown } from '@/components/ChannelBreakdown'
 
 interface User {
   id: string
-  email: string
-  name: string
-  picture?: string
+  username: string
+  displayName: string
 }
 
 interface Channel {

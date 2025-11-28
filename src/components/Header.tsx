@@ -1,14 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import Image from 'next/image'
-import { Youtube, Plus, LogOut, User, ChevronDown } from 'lucide-react'
+import { Youtube, Plus, LogOut, User } from 'lucide-react'
 
 interface UserData {
   id: string
-  email: string
-  name: string
-  picture?: string
+  username: string
+  displayName: string
 }
 
 interface HeaderProps {
@@ -36,6 +34,11 @@ export function Header({ user, onAddChannel, isLoading = false }: HeaderProps) {
     window.location.href = '/api/auth/logout'
   }
 
+  // Get initials for avatar
+  const getInitials = (name: string) => {
+    return name.slice(0, 2).toUpperCase()
+  }
+
   return (
     <header className="sticky top-0 z-40 bg-yt-bg border-b border-yt-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -56,7 +59,7 @@ export function Header({ user, onAddChannel, isLoading = false }: HeaderProps) {
               className="flex items-center gap-2 bg-yt-bg-tertiary hover:bg-yt-bg-hover px-4 py-2 rounded-full text-sm font-medium text-yt-text transition-colors"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add Channel</span>
+              <span className="hidden sm:inline">Connect Channel</span>
             </button>
 
             {/* User Profile */}
@@ -68,19 +71,11 @@ export function Header({ user, onAddChannel, isLoading = false }: HeaderProps) {
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
-                  {user.picture ? (
-                    <Image
-                      src={user.picture}
-                      alt={user.name}
-                      width={36}
-                      height={36}
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <div className="w-9 h-9 bg-yt-blue rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-white" />
-                    </div>
-                  )}
+                  <div className="w-9 h-9 bg-yt-blue rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {getInitials(user.displayName || user.username)}
+                    </span>
+                  </div>
                 </button>
 
                 {isProfileOpen && (
@@ -88,25 +83,17 @@ export function Header({ user, onAddChannel, isLoading = false }: HeaderProps) {
                     {/* User Info */}
                     <div className="p-4 border-b border-yt-border">
                       <div className="flex items-center gap-3">
-                        {user.picture ? (
-                          <Image
-                            src={user.picture}
-                            alt={user.name}
-                            width={48}
-                            height={48}
-                            className="rounded-full"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 bg-yt-blue rounded-full flex items-center justify-center">
-                            <User className="w-6 h-6 text-white" />
-                          </div>
-                        )}
+                        <div className="w-12 h-12 bg-yt-blue rounded-full flex items-center justify-center">
+                          <span className="text-white text-lg font-medium">
+                            {getInitials(user.displayName || user.username)}
+                          </span>
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-yt-text truncate">
-                            {user.name}
+                            {user.displayName || user.username}
                           </p>
                           <p className="text-xs text-yt-text-secondary truncate">
-                            {user.email}
+                            @{user.username}
                           </p>
                         </div>
                       </div>
