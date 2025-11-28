@@ -148,7 +148,12 @@ function DashboardContent() {
         params.set('days', DATE_RANGE_DAYS[selectedDateRange]?.toString() || '28')
       }
 
-      const res = await fetch(`/api/youtube/analytics?${params.toString()}`)
+      const res = await fetch(`/api/youtube/analytics?${params.toString()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      })
       const data = await res.json()
 
       if (data.error) {

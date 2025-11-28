@@ -4,6 +4,10 @@ import { createServiceClient } from '@/lib/supabase-server'
 import { getYouTubeAnalytics, refreshAccessToken } from '@/lib/google'
 import { format, subDays, parseISO } from 'date-fns'
 
+// Force dynamic rendering - no caching
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(request: NextRequest) {
   const cookieStore = cookies()
   const userId = cookieStore.get('user_id')?.value

@@ -73,7 +73,10 @@ export async function getYouTubeAnalytics(
   const oauth2Client = getOAuth2Client()
   oauth2Client.setCredentials({ access_token: accessToken })
   
-  const youtubeAnalytics = google.youtubeAnalytics({ version: 'v2', auth: oauth2Client })
+  const youtubeAnalytics = google.youtubeAnalytics({ 
+    version: 'v2', 
+    auth: oauth2Client,
+  })
   
   try {
     const { data } = await youtubeAnalytics.reports.query({
@@ -86,9 +89,9 @@ export async function getYouTubeAnalytics(
     })
     
     return data
-  } catch (error) {
-    console.error('YouTube Analytics API error:', error)
-    return null
+  } catch (error: any) {
+    console.error('YouTube Analytics API error:', error?.message || error)
+    throw error
   }
 }
 
