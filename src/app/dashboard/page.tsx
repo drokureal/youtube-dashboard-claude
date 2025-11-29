@@ -284,6 +284,11 @@ function DashboardContent() {
                     <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${showProfit ? 'left-3.5' : 'left-0.5'}`} />
                   </span>
                 </button>
+                {showProfit && analytics?.channelBreakdown && (
+                  <span className="text-xs text-yt-text-secondary">
+                    Total Videos: {analytics.channelBreakdown.reduce((sum, ch) => sum + ch.longFormVideoCount, 0)} • Total Cost: ${analytics.channelBreakdown.reduce((sum, ch) => sum + (costPerVideo[ch.channelId] || 0) * ch.longFormVideoCount, 0).toFixed(2)}
+                  </span>
+                )}
                 
                 <button
                   onClick={() => setShowUSTax(!showUSTax)}

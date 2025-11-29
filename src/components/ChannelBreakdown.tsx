@@ -159,7 +159,7 @@ export function ChannelBreakdown({
             {/* Cost per video input - Mobile */}
             {showProfit && (
               <div className="mt-3 pt-3 border-t border-yt-border">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="text-xs text-yt-text-secondary">
                     Videos: {channel.longFormVideoCount} • Cost/video:
                   </div>
@@ -176,6 +176,9 @@ export function ChannelBreakdown({
                     />
                   </div>
                 </div>
+                <div className="text-xs text-yt-text-secondary text-right">
+                  Total Cost: <span className="text-yellow-400">${((costPerVideo[channel.channelId] || 0) * channel.longFormVideoCount).toFixed(2)}</span>
+                </div>
               </div>
             )}
           </div>
@@ -185,7 +188,7 @@ export function ChannelBreakdown({
       {/* Desktop Table View */}
       <div className="hidden sm:block">
         {/* Table Header */}
-        <div className={`px-6 py-3 bg-yt-bg-tertiary grid gap-4 text-xs font-medium text-yt-text-secondary ${showProfit ? 'grid-cols-8' : 'grid-cols-6'}`}>
+        <div className={`px-6 py-3 bg-yt-bg-tertiary grid gap-4 text-xs font-medium text-yt-text-secondary ${showProfit ? 'grid-cols-9' : 'grid-cols-6'}`}>
           <div className="col-span-2">Channel</div>
           <div className="text-right">Views</div>
           <div className="text-right">Watch time</div>
@@ -194,6 +197,7 @@ export function ChannelBreakdown({
             <>
               <div className="text-right">Videos</div>
               <div className="text-right">Cost/Video</div>
+              <div className="text-right">Total Cost</div>
             </>
           )}
           <div className="text-right">{showProfit ? 'Profit' : 'Revenue'}</div>
@@ -204,7 +208,7 @@ export function ChannelBreakdown({
           {channels.map((channel) => (
             <div
               key={channel.channelId}
-              className={`px-6 py-4 grid gap-4 items-center hover:bg-yt-bg-tertiary/50 transition-colors ${showProfit ? 'grid-cols-8' : 'grid-cols-6'}`}
+              className={`px-6 py-4 grid gap-4 items-center hover:bg-yt-bg-tertiary/50 transition-colors ${showProfit ? 'grid-cols-9' : 'grid-cols-6'}`}
             >
               {/* Channel Info */}
               <div className="col-span-2 flex items-center gap-3">
@@ -276,6 +280,11 @@ export function ChannelBreakdown({
                         placeholder="0"
                         className="w-20 px-2 py-1 text-sm bg-yt-bg-tertiary border border-yt-border rounded text-yt-text text-right"
                       />
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-yellow-400">
+                      ${((costPerVideo[channel.channelId] || 0) * channel.longFormVideoCount).toFixed(2)}
                     </div>
                   </div>
                 </>
