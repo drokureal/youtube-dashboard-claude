@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import {
   XAxis,
   YAxis,
@@ -18,6 +19,10 @@ interface DataPoint {
   netSubscribers: number
   estimatedRevenue: number
   rpm: number
+  longFormViews: number
+  longFormWatchTime: number
+  shortsViews: number
+  shortsWatchTime: number
 }
 
 export type MetricKey = 'views' | 'watchTimeMinutes' | 'netSubscribers' | 'estimatedRevenue'
@@ -26,6 +31,11 @@ interface AnalyticsChartProps {
   data: DataPoint[]
   isLoading?: boolean
   activeMetric: MetricKey
+  showUSTax?: boolean
+  includeShorts?: boolean
+  usTaxRate?: number
+  totalUSRevenue?: number
+  totalRevenue?: number
 }
 
 const METRICS = {
@@ -35,8 +45,49 @@ const METRICS = {
   estimatedRevenue: { label: 'Revenue', color: '#2ba640', prefix: '$' },
 }
 
-export function AnalyticsChart({ data, isLoading = false, activeMetric }: AnalyticsChartProps) {
+export function AnalyticsChart({ 
+  data, 
+  isLoading = false, 
+  activeMetric,
+  showUSTax = false,
+  includeShorts = false,
+  usTaxRate = 0.15,
+  totalUSRevenue = 0,
+  totalRevenue = 0,
+}: AnalyticsChartProps) {
   const currentMetric = METRICS[activeMetric]
+  
+  // Calculate US revenue ratio for proportional daily tax deduction
+  const usRevenueRatio = totalRevenue > 0 ? totalUSRevenue / totalRevenue : 0
+
+  // Transform data based on toggles
+  const transformedData = useMemo(() => {
+    return data.map(point => {
+      let views = point.views
+      let watchTimeMinutes = point.watchTimeMinutes
+      let estimatedRevenue = point.estimatedRevenue
+      
+      // Apply content type filter (only for views and watch time)
+      if (!includeShorts) {
+        views = point.longFormViews || 0
+        watchTimeMinutes = point.longFormWatchTime || 0
+      }
+      
+      // Apply US tax deduction to revenue
+      if (showUSTax) {
+        // Estimate daily US revenue proportionally and deduct 15%
+        const dailyUSRevenue = estimatedRevenue * usRevenueRatio
+        estimatedRevenue = estimatedRevenue - (dailyUSRevenue * usTaxRate)
+      }
+      
+      return {
+        ...point,
+        views,
+        watchTimeMinutes,
+        estimatedRevenue,
+      }
+    })
+  }, [data, includeShorts, showUSTax, usRevenueRatio, usTaxRate])
 
   // Format for Y-axis (shortened)
   const formatAxisValue = (value: number) => {
@@ -104,7 +155,7 @@ export function AnalyticsChart({ data, isLoading = false, activeMetric }: Analyt
       {/* Chart */}
       <div className="h-[200px] sm:h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+          <AreaChart data={transformedData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id={`gradient-${activeMetric}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={currentMetric.color} stopOpacity={0.6} />
