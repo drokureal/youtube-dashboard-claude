@@ -107,8 +107,8 @@ export function AnalyticsChart({ data, isLoading = false, activeMetric }: Analyt
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={`gradient-${activeMetric}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={currentMetric.color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={currentMetric.color} stopOpacity={0} />
+                <stop offset="0%" stopColor={currentMetric.color} stopOpacity={0.6} />
+                <stop offset="100%" stopColor={currentMetric.color} stopOpacity={0.1} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#3f3f3f" vertical={false} />
