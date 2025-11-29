@@ -120,3 +120,31 @@ export async function getChannelAnalyticsSummary(
     return null
   }
 }
+
+export async function getRevenueByCountry(
+  accessToken: string,
+  channelId: string,
+  startDate: string,
+  endDate: string
+) {
+  const oauth2Client = getOAuth2Client()
+  oauth2Client.setCredentials({ access_token: accessToken })
+  
+  const youtubeAnalytics = google.youtubeAnalytics({ version: 'v2', auth: oauth2Client })
+  
+  try {
+    const { data } = await youtubeAnalytics.reports.query({
+      ids: `channel==${channelId}`,
+      startDate,
+      endDate,
+      metrics: 'estimatedRevenue',
+      dimensions: 'country',
+      sort: '-estimatedRevenue',
+    })
+    
+    return data
+  } catch (error) {
+    console.error('YouTube Analytics Country Revenue error:', error)
+    return null
+  }
+}

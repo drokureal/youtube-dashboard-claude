@@ -32,6 +32,9 @@ interface AnalyticsData {
     subscribersLost: number
     netSubscribers: number
     estimatedRevenue: number
+    usRevenue: number
+    usTaxAmount: number
+    adjustedRevenue: number
     rpm: number
     viewsChange: number
     watchTimeChange: number
@@ -55,6 +58,7 @@ interface AnalyticsData {
     watchTimeMinutes: number
     netSubscribers: number
     estimatedRevenue: number
+    usRevenue: number
     rpm: number
     previousViews: number
     previousWatchTime: number
@@ -81,6 +85,7 @@ function DashboardContent() {
   const [selectedDateRange, setSelectedDateRange] = useState('28d')
   const [customDateRange, setCustomDateRange] = useState<{ startDate?: string; endDate?: string }>({})
   const [activeMetric, setActiveMetric] = useState<MetricKey>('views')
+  const [showUSTax, setShowUSTax] = useState(false)
   
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
@@ -258,6 +263,29 @@ function DashboardContent() {
                   <span className="hidden sm:inline">Refresh</span>
                 </button>
               </div>
+              
+              {/* US Tax Toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowUSTax(!showUSTax)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    showUSTax 
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/50' 
+                      : 'bg-yt-bg-tertiary text-yt-text-secondary hover:text-yt-text border border-transparent'
+                  }`}
+                >
+                  <span className="text-base">🇺🇸</span>
+                  <span>-15% US Tax</span>
+                  <span className={`w-8 h-5 rounded-full relative transition-colors ${showUSTax ? 'bg-red-500' : 'bg-yt-bg-hover'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${showUSTax ? 'left-3.5' : 'left-0.5'}`} />
+                  </span>
+                </button>
+                {showUSTax && analytics?.summary.usRevenue !== undefined && (
+                  <span className="text-xs text-yt-text-secondary">
+                    US Revenue: ${analytics.summary.usRevenue.toFixed(2)} → Tax: -${analytics.summary.usTaxAmount.toFixed(2)}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Error State */}
@@ -306,8 +334,11 @@ function DashboardContent() {
                 accentColor="#9333ea"
               />
               <StatsCard
-                title="Revenue"
-                value={analytics?.summary.estimatedRevenue?.toFixed(2) || '0.00'}
+                title={showUSTax ? "Revenue (after US tax)" : "Revenue"}
+                value={showUSTax 
+                  ? (analytics?.summary.adjustedRevenue?.toFixed(2) || '0.00')
+                  : (analytics?.summary.estimatedRevenue?.toFixed(2) || '0.00')
+                }
                 change={analytics?.summary.revenueChange}
                 changeLabel="vs previous period"
                 icon={<DollarSign className="w-5 h-5" />}
@@ -340,6 +371,7 @@ function DashboardContent() {
               <ChannelBreakdown
                 channels={analytics.channelBreakdown}
                 isLoading={isLoadingAnalytics}
+                showUSTax={showUSTax}
               />
             )}
           </>

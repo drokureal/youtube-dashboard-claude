@@ -12,6 +12,7 @@ interface ChannelData {
   watchTimeMinutes: number
   netSubscribers: number
   estimatedRevenue: number
+  usRevenue: number
   rpm: number
   previousViews: number
   previousWatchTime: number
@@ -22,9 +23,10 @@ interface ChannelData {
 interface ChannelBreakdownProps {
   channels: ChannelData[]
   isLoading?: boolean
+  showUSTax?: boolean
 }
 
-export function ChannelBreakdown({ channels, isLoading = false }: ChannelBreakdownProps) {
+export function ChannelBreakdown({ channels, isLoading = false, showUSTax = false }: ChannelBreakdownProps) {
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M'
@@ -33,6 +35,12 @@ export function ChannelBreakdown({ channels, isLoading = false }: ChannelBreakdo
       return (num / 1000).toFixed(1) + 'K'
     }
     return num.toLocaleString()
+  }
+
+  const getAdjustedRevenue = (channel: ChannelData) => {
+    if (!showUSTax) return channel.estimatedRevenue
+    const usTax = (channel.usRevenue || 0) * 0.15
+    return channel.estimatedRevenue - usTax
   }
 
   const getChangeIndicator = (current: number, previous: number) => {
@@ -119,7 +127,7 @@ export function ChannelBreakdown({ channels, isLoading = false }: ChannelBreakdo
               </div>
               <div>
                 <div className="text-yt-text-secondary text-xs mb-1">Revenue</div>
-                <div className="font-medium text-yt-text">${channel.estimatedRevenue.toFixed(2)}</div>
+                <div className="font-medium text-yt-text">${getAdjustedRevenue(channel).toFixed(2)}</div>
               </div>
             </div>
           </div>
@@ -197,7 +205,7 @@ export function ChannelBreakdown({ channels, isLoading = false }: ChannelBreakdo
               {/* Revenue */}
               <div className="text-right">
                 <div className="text-sm font-medium text-yt-text">
-                  ${channel.estimatedRevenue.toFixed(2)}
+                  ${getAdjustedRevenue(channel).toFixed(2)}
                 </div>
                 <div className="text-xs text-yt-text-secondary">
                   ${channel.rpm.toFixed(2)} RPM

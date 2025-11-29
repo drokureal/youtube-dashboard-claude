@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase-server'
-import { getYouTubeAnalytics, refreshAccessToken } from '@/lib/google'
+import { getYouTubeAnalytics, getRevenueByCountry, refreshAccessToken } from '@/lib/google'
 import { format, subDays, parseISO } from 'date-fns'
 
 // Force dynamic rendering - no caching
@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
   
   const analyticsResults = []
   const previousResults = []
+  const countryRevenueResults = []
   
   for (const channel of channels) {
     let accessToken = channel.access_token
@@ -111,6 +112,14 @@ export async function GET(request: NextRequest) {
         previousEndDate
       )
       
+      // Get revenue by country
+      const countryRevenue = await getRevenueByCountry(
+        accessToken,
+        channel.channel_id,
+        startDate,
+        endDate
+      )
+      
       if (analytics) {
         analyticsResults.push({
           channelId: channel.id,
@@ -127,13 +136,20 @@ export async function GET(request: NextRequest) {
           data: previousAnalytics,
         })
       }
+      
+      if (countryRevenue) {
+        countryRevenueResults.push({
+          channelId: channel.id,
+          data: countryRevenue,
+        })
+      }
     } catch (error) {
       console.error(`Failed to get analytics for channel ${channel.channel_id}:`, error)
     }
   }
   
   // Process and combine analytics data
-  const processedData = processAnalyticsData(analyticsResults, previousResults)
+  const processedData = processAnalyticsData(analyticsResults, previousResults, countryRevenueResults)
   
   return NextResponse.json({
     analytics: processedData,
@@ -148,7 +164,8 @@ export async function GET(request: NextRequest) {
 
 function processAnalyticsData(
   currentResults: any[],
-  previousResults: any[]
+  previousResults: any[],
+  countryRevenueResults: any[]
 ) {
   const channelBreakdown = []
   const dailyDataMap = new Map<string, any>()
@@ -158,6 +175,7 @@ function processAnalyticsData(
   let totalSubscribersGained = 0
   let totalSubscribersLost = 0
   let totalRevenue = 0
+  let totalUSRevenue = 0
   
   let prevTotalViews = 0
   let prevTotalWatchTime = 0
@@ -202,11 +220,22 @@ function processAnalyticsData(
       dailyDataMap.set(date, existing)
     }
     
+    // Get US revenue for this channel
+    const countryResult = countryRevenueResults.find(c => c.channelId === result.channelId)
+    let channelUSRevenue = 0
+    if (countryResult && countryResult.data.rows) {
+      const usRow = countryResult.data.rows.find((row: any[]) => row[0] === 'US')
+      if (usRow) {
+        channelUSRevenue = usRow[1] || 0
+      }
+    }
+    
     totalViews += channelViews
     totalWatchTimeMinutes += channelWatchTime
     totalSubscribersGained += channelSubsGained
     totalSubscribersLost += channelSubsLost
     totalRevenue += channelRevenue
+    totalUSRevenue += channelUSRevenue
     
     // Find previous period data for this channel
     const prevResult = previousResults.find(p => p.channelId === result.channelId)
@@ -235,6 +264,7 @@ function processAnalyticsData(
       subscribersLost: channelSubsLost,
       netSubscribers: channelSubsGained - channelSubsLost,
       estimatedRevenue: channelRevenue,
+      usRevenue: channelUSRevenue,
       rpm: channelViews > 0 ? (channelRevenue / channelViews) * 1000 : 0,
       previousViews: prevChannelViews,
       previousWatchTime: prevChannelWatchTime,
@@ -269,6 +299,10 @@ function processAnalyticsData(
     day.netSubscribers = day.subscribersGained - day.subscribersLost
   })
   
+  // Calculate adjusted revenue (15% cut from US revenue)
+  const usTaxAmount = totalUSRevenue * 0.15
+  const adjustedRevenue = totalRevenue - usTaxAmount
+  
   return {
     summary: {
       views: totalViews,
@@ -278,6 +312,9 @@ function processAnalyticsData(
       subscribersLost: totalSubscribersLost,
       netSubscribers,
       estimatedRevenue: totalRevenue,
+      usRevenue: totalUSRevenue,
+      usTaxAmount,
+      adjustedRevenue,
       rpm: totalViews > 0 ? (totalRevenue / totalViews) * 1000 : 0,
       // Comparison with previous period
       viewsChange: totalViews - prevTotalViews,
