@@ -171,9 +171,10 @@ export async function getAnalyticsByContentType(
       sort: 'day',
     })
     
+    console.log(`Content type data for ${channelId}:`, JSON.stringify(data?.rows?.slice(0, 3)))
     return data
-  } catch (error) {
-    console.error('YouTube Analytics Content Type error:', error)
+  } catch (error: any) {
+    console.error('YouTube Analytics Content Type error:', error?.message || error)
     return null
   }
 }

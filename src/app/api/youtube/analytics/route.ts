@@ -205,15 +205,17 @@ function processAnalyticsData(
   let prevTotalSubscribers = 0
   let prevTotalRevenue = 0
   
-  // Process content type data first to build daily breakdown
-  const dailyContentTypeMap = new Map<string, any>()
+  // Process content type data first to build daily breakdown by date
+  // Key format: "channelId:date"
+  const contentTypeDataMap = new Map<string, any>()
   
   for (const result of contentTypeResults) {
-    const rows = result.data.rows || []
+    const rows = result.data?.rows || []
     for (const row of rows) {
       const [date, contentType, views, watchTime] = row
+      const key = `${result.channelId}:${date}`
       
-      const existing = dailyContentTypeMap.get(date) || {
+      const existing = contentTypeDataMap.get(key) || {
         longFormViews: 0,
         longFormWatchTime: 0,
         shortsViews: 0,
@@ -224,16 +226,12 @@ function processAnalyticsData(
       if (contentType === 'VIDEO_ON_DEMAND' || contentType === 'LIVE_STREAM') {
         existing.longFormViews += views || 0
         existing.longFormWatchTime += watchTime || 0
-        totalLongFormViews += views || 0
-        totalLongFormWatchTime += watchTime || 0
       } else if (contentType === 'SHORTS') {
         existing.shortsViews += views || 0
         existing.shortsWatchTime += watchTime || 0
-        totalShortsViews += views || 0
-        totalShortsWatchTime += watchTime || 0
       }
       
-      dailyContentTypeMap.set(date, existing)
+      contentTypeDataMap.set(key, existing)
     }
   }
   
@@ -256,13 +254,20 @@ function processAnalyticsData(
       channelSubsLost += subsLost || 0
       channelRevenue += revenue || 0
       
-      // Get content type breakdown for this date
-      const contentTypeData = dailyContentTypeMap.get(date) || {
-        longFormViews: 0,
-        longFormWatchTime: 0,
+      // Get content type breakdown for this channel and date
+      const contentTypeKey = `${result.channelId}:${date}`
+      const contentTypeData = contentTypeDataMap.get(contentTypeKey) || {
+        longFormViews: views || 0,  // Fallback to total views if no content type data
+        longFormWatchTime: watchTime || 0,
         shortsViews: 0,
         shortsWatchTime: 0,
       }
+      
+      // Add to totals
+      totalLongFormViews += contentTypeData.longFormViews
+      totalLongFormWatchTime += contentTypeData.longFormWatchTime
+      totalShortsViews += contentTypeData.shortsViews
+      totalShortsWatchTime += contentTypeData.shortsWatchTime
       
       // Aggregate daily data
       const existing = dailyDataMap.get(date) || {
