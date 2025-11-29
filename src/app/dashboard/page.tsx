@@ -290,7 +290,7 @@ function DashboardContent() {
                 isLoading={isLoadingAnalytics}
                 isActive={activeMetric === 'watchTimeMinutes'}
                 onClick={() => setActiveMetric('watchTimeMinutes')}
-                accentColor="#2ba640"
+                accentColor="#eab308"
               />
               <StatsCard
                 title="Subscribers"
@@ -314,7 +314,7 @@ function DashboardContent() {
                 isLoading={isLoadingAnalytics}
                 isActive={activeMetric === 'estimatedRevenue'}
                 onClick={() => setActiveMetric('estimatedRevenue')}
-                accentColor="#eab308"
+                accentColor="#2ba640"
               />
               <StatsCard
                 title="RPM"

@@ -30,9 +30,9 @@ interface AnalyticsChartProps {
 
 const METRICS = {
   views: { label: 'Views', color: '#3ea6ff' },
-  watchTimeMinutes: { label: 'Watch time (min)', color: '#2ba640' },
+  watchTimeMinutes: { label: 'Watch time (min)', color: '#eab308' },
   netSubscribers: { label: 'Subscribers', color: '#9333ea' },
-  estimatedRevenue: { label: 'Revenue', color: '#eab308', prefix: '$' },
+  estimatedRevenue: { label: 'Revenue', color: '#2ba640', prefix: '$' },
 }
 
 export function AnalyticsChart({ data, isLoading = false, activeMetric }: AnalyticsChartProps) {
@@ -132,7 +132,7 @@ export function AnalyticsChart({ data, isLoading = false, activeMetric }: Analyt
             />
             <Tooltip content={<CustomTooltip />} />
             <Area
-              type="monotone"
+              type="linear"
               dataKey={activeMetric}
               stroke={currentMetric.color}
               strokeWidth={2}

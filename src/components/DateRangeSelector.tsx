@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
-import { format, startOfMonth, endOfMonth } from 'date-fns'
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns'
 
 interface DateRangeOption {
   label: string
@@ -18,6 +18,7 @@ interface DateRangeSelectorProps {
 }
 
 const PRESET_RANGES: DateRangeOption[] = [
+  { label: 'Lifetime', value: 'lifetime' },
   { label: 'Last 7 days', value: '7d', days: 7 },
   { label: 'Last 28 days', value: '28d', days: 28 },
   { label: 'Last 90 days', value: '90d', days: 90 },
@@ -39,17 +40,25 @@ export function DateRangeSelector({
 }: DateRangeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [showMonths, setShowMonths] = useState(false)
+  const [showYears, setShowYears] = useState(false)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth()
 
+  // Generate available years from MIN_YEAR to currentYear
+  const availableYears = Array.from(
+    { length: currentYear - MIN_YEAR + 1 },
+    (_, i) => currentYear - i
+  )
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false)
         setShowMonths(false)
+        setShowYears(false)
       }
     }
 
@@ -61,6 +70,12 @@ export function DateRangeSelector({
     const preset = PRESET_RANGES.find(r => r.value === selectedRange)
     if (preset) return preset.label
     
+    // Check if it's a year selection
+    if (selectedRange.startsWith('year-')) {
+      const year = selectedRange.split('-')[1]
+      return `Year ${year}`
+    }
+    
     // Check if it's a month selection
     if (selectedRange.startsWith('month-')) {
       const [, year, month] = selectedRange.split('-')
@@ -70,12 +85,30 @@ export function DateRangeSelector({
     return 'Select Range'
   }
 
+  const handleYearSelect = (year: number) => {
+    const startDate = format(startOfYear(new Date(year, 0)), 'yyyy-MM-dd')
+    // For current year, end date is today. For past years, end of year
+    const endDate = year === currentYear 
+      ? format(new Date(), 'yyyy-MM-dd')
+      : format(endOfYear(new Date(year, 0)), 'yyyy-MM-dd')
+    onSelect(`year-${year}`, startDate, endDate)
+    setIsOpen(false)
+    setShowYears(false)
+  }
+
   const handleMonthSelect = (monthIndex: number, year: number) => {
     const startDate = format(startOfMonth(new Date(year, monthIndex)), 'yyyy-MM-dd')
     const endDate = format(endOfMonth(new Date(year, monthIndex)), 'yyyy-MM-dd')
     onSelect(`month-${year}-${monthIndex}`, startDate, endDate)
     setIsOpen(false)
     setShowMonths(false)
+  }
+
+  const handleLifetimeSelect = () => {
+    const startDate = `${MIN_YEAR}-01-01`
+    const endDate = format(new Date(), 'yyyy-MM-dd')
+    onSelect('lifetime', startDate, endDate)
+    setIsOpen(false)
   }
 
   const canGoToPreviousYear = selectedYear > MIN_YEAR
@@ -129,15 +162,19 @@ export function DateRangeSelector({
 
       {isOpen && (
         <div className="absolute top-full right-0 mt-2 bg-yt-bg-secondary border border-yt-border rounded-lg shadow-xl z-50 overflow-hidden min-w-[220px]">
-          {!showMonths ? (
+          {!showMonths && !showYears ? (
             <>
               {/* Preset Ranges */}
               {PRESET_RANGES.map((range) => (
                 <button
                   key={range.value}
                   onClick={() => {
-                    onSelect(range.value)
-                    setIsOpen(false)
+                    if (range.value === 'lifetime') {
+                      handleLifetimeSelect()
+                    } else {
+                      onSelect(range.value)
+                      setIsOpen(false)
+                    }
                   }}
                   className={`w-full px-4 py-3 text-left text-sm hover:bg-yt-bg-hover transition-colors ${
                     selectedRange === range.value
@@ -151,6 +188,15 @@ export function DateRangeSelector({
 
               <div className="border-t border-yt-border" />
 
+              {/* Year Selection Trigger */}
+              <button
+                onClick={() => setShowYears(true)}
+                className="w-full px-4 py-3 text-left text-sm text-yt-text hover:bg-yt-bg-hover transition-colors flex items-center justify-between"
+              >
+                <span>Select Year</span>
+                <ChevronDown className="w-4 h-4 text-yt-text-secondary -rotate-90" />
+              </button>
+
               {/* Month Selection Trigger */}
               <button
                 onClick={() => setShowMonths(true)}
@@ -159,6 +205,33 @@ export function DateRangeSelector({
                 <span>Select Month</span>
                 <ChevronDown className="w-4 h-4 text-yt-text-secondary -rotate-90" />
               </button>
+            </>
+          ) : showYears ? (
+            <>
+              {/* Back Button */}
+              <button
+                onClick={() => setShowYears(false)}
+                className="w-full px-4 py-3 text-left text-sm text-yt-text-secondary hover:bg-yt-bg-hover transition-colors border-b border-yt-border"
+              >
+                ← Back
+              </button>
+
+              {/* Years List */}
+              <div className="max-h-[300px] overflow-y-auto">
+                {availableYears.map((year) => (
+                  <button
+                    key={year}
+                    onClick={() => handleYearSelect(year)}
+                    className={`w-full px-4 py-3 text-left text-sm hover:bg-yt-bg-hover transition-colors ${
+                      selectedRange === `year-${year}`
+                        ? 'bg-yt-bg-tertiary text-yt-blue'
+                        : 'text-yt-text'
+                    }`}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
             </>
           ) : (
             <>
