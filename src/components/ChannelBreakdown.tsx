@@ -13,6 +13,7 @@ interface ChannelData {
   netSubscribers: number
   estimatedRevenue: number
   usRevenue: number
+  longFormVideoCount: number
   rpm: number
   previousViews: number
   previousWatchTime: number
@@ -24,9 +25,19 @@ interface ChannelBreakdownProps {
   channels: ChannelData[]
   isLoading?: boolean
   showUSTax?: boolean
+  showProfit?: boolean
+  costPerVideo?: Record<string, number>
+  onCostChange?: (channelId: string, cost: number) => void
 }
 
-export function ChannelBreakdown({ channels, isLoading = false, showUSTax = false }: ChannelBreakdownProps) {
+export function ChannelBreakdown({ 
+  channels, 
+  isLoading = false, 
+  showUSTax = false,
+  showProfit = false,
+  costPerVideo = {},
+  onCostChange,
+}: ChannelBreakdownProps) {
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
       return (num / 1000000).toFixed(1) + 'M'
@@ -38,9 +49,19 @@ export function ChannelBreakdown({ channels, isLoading = false, showUSTax = fals
   }
 
   const getAdjustedRevenue = (channel: ChannelData) => {
-    if (!showUSTax) return channel.estimatedRevenue
-    const usTax = (channel.usRevenue || 0) * 0.15
-    return channel.estimatedRevenue - usTax
+    let revenue = channel.estimatedRevenue
+    
+    if (showUSTax) {
+      const usTax = (channel.usRevenue || 0) * 0.15
+      revenue = revenue - usTax
+    }
+    
+    if (showProfit) {
+      const cost = costPerVideo[channel.channelId] || 0
+      revenue = revenue - (cost * channel.longFormVideoCount)
+    }
+    
+    return revenue
   }
 
   const getChangeIndicator = (current: number, previous: number) => {
@@ -126,10 +147,37 @@ export function ChannelBreakdown({ channels, isLoading = false, showUSTax = fals
                 </div>
               </div>
               <div>
-                <div className="text-yt-text-secondary text-xs mb-1">Revenue</div>
-                <div className="font-medium text-yt-text">${getAdjustedRevenue(channel).toFixed(2)}</div>
+                <div className="text-yt-text-secondary text-xs mb-1">
+                  {showProfit ? 'Profit' : 'Revenue'}
+                </div>
+                <div className={`font-medium ${getAdjustedRevenue(channel) >= 0 ? 'text-yt-text' : 'text-red-400'}`}>
+                  ${getAdjustedRevenue(channel).toFixed(2)}
+                </div>
               </div>
             </div>
+            
+            {/* Cost per video input - Mobile */}
+            {showProfit && (
+              <div className="mt-3 pt-3 border-t border-yt-border">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs text-yt-text-secondary">
+                    Videos: {channel.longFormVideoCount} • Cost/video:
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-yt-text-secondary">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={costPerVideo[channel.channelId] || ''}
+                      onChange={(e) => onCostChange?.(channel.channelId, parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      className="w-20 px-2 py-1 text-sm bg-yt-bg-tertiary border border-yt-border rounded text-yt-text text-right"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -137,12 +185,18 @@ export function ChannelBreakdown({ channels, isLoading = false, showUSTax = fals
       {/* Desktop Table View */}
       <div className="hidden sm:block">
         {/* Table Header */}
-        <div className="px-6 py-3 bg-yt-bg-tertiary grid grid-cols-6 gap-4 text-xs font-medium text-yt-text-secondary">
+        <div className={`px-6 py-3 bg-yt-bg-tertiary grid gap-4 text-xs font-medium text-yt-text-secondary ${showProfit ? 'grid-cols-8' : 'grid-cols-6'}`}>
           <div className="col-span-2">Channel</div>
           <div className="text-right">Views</div>
           <div className="text-right">Watch time</div>
           <div className="text-right">Subscribers</div>
-          <div className="text-right">Revenue</div>
+          {showProfit && (
+            <>
+              <div className="text-right">Videos</div>
+              <div className="text-right">Cost/Video</div>
+            </>
+          )}
+          <div className="text-right">{showProfit ? 'Profit' : 'Revenue'}</div>
         </div>
 
         {/* Table Body */}
@@ -150,7 +204,7 @@ export function ChannelBreakdown({ channels, isLoading = false, showUSTax = fals
           {channels.map((channel) => (
             <div
               key={channel.channelId}
-              className="px-6 py-4 grid grid-cols-6 gap-4 items-center hover:bg-yt-bg-tertiary/50 transition-colors"
+              className={`px-6 py-4 grid gap-4 items-center hover:bg-yt-bg-tertiary/50 transition-colors ${showProfit ? 'grid-cols-8' : 'grid-cols-6'}`}
             >
               {/* Channel Info */}
               <div className="col-span-2 flex items-center gap-3">
@@ -202,9 +256,34 @@ export function ChannelBreakdown({ channels, isLoading = false, showUSTax = fals
                 </div>
               </div>
 
-              {/* Revenue */}
+              {/* Videos & Cost (only in profit mode) */}
+              {showProfit && (
+                <>
+                  <div className="text-right">
+                    <div className="text-sm font-medium text-yt-text">
+                      {channel.longFormVideoCount}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="text-sm text-yt-text-secondary">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={costPerVideo[channel.channelId] || ''}
+                        onChange={(e) => onCostChange?.(channel.channelId, parseFloat(e.target.value) || 0)}
+                        placeholder="0"
+                        className="w-20 px-2 py-1 text-sm bg-yt-bg-tertiary border border-yt-border rounded text-yt-text text-right"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Revenue/Profit */}
               <div className="text-right">
-                <div className="text-sm font-medium text-yt-text">
+                <div className={`text-sm font-medium ${getAdjustedRevenue(channel) >= 0 ? 'text-yt-text' : 'text-red-400'}`}>
                   ${getAdjustedRevenue(channel).toFixed(2)}
                 </div>
                 <div className="text-xs text-yt-text-secondary">

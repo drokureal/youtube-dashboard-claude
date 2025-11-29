@@ -148,3 +148,109 @@ export async function getRevenueByCountry(
     return null
   }
 }
+
+export async function getLongFormVideoCount(
+  accessToken: string,
+  channelId: string,
+  startDate: string,
+  endDate: string
+): Promise<number> {
+  const oauth2Client = getOAuth2Client()
+  oauth2Client.setCredentials({ access_token: accessToken })
+  
+  const youtube = google.youtube({ version: 'v3', auth: oauth2Client })
+  
+  try {
+    // Get uploads playlist ID
+    const channelResponse = await youtube.channels.list({
+      part: ['contentDetails'],
+      id: [channelId],
+    })
+    
+    const uploadsPlaylistId = channelResponse.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads
+    if (!uploadsPlaylistId) return 0
+    
+    // Convert dates to Date objects for comparison
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    end.setHours(23, 59, 59, 999)
+    
+    let longFormCount = 0
+    let pageToken: string | null | undefined = undefined
+    
+    // Paginate through uploads (limit to 200 videos to avoid too many API calls)
+    for (let page = 0; page < 4; page++) {
+      const listParams: {
+        part: string[]
+        playlistId: string
+        maxResults: number
+        pageToken?: string
+      } = {
+        part: ['contentDetails'],
+        playlistId: uploadsPlaylistId,
+        maxResults: 50,
+      }
+      
+      if (pageToken) {
+        listParams.pageToken = pageToken
+      }
+      
+      const response = await youtube.playlistItems.list(listParams)
+      const items = response.data.items || []
+      
+      let foundOlder = false
+      
+      for (const item of items) {
+        const publishedAt = new Date(item.contentDetails?.videoPublishedAt || '')
+        
+        // Stop if we've gone past the date range
+        if (publishedAt < start) {
+          foundOlder = true
+          break
+        }
+        
+        // Check if within date range
+        if (publishedAt >= start && publishedAt <= end) {
+          const videoId = item.contentDetails?.videoId
+          if (videoId) {
+            const videoResponse = await youtube.videos.list({
+              part: ['contentDetails'],
+              id: [videoId],
+            })
+            
+            const duration = videoResponse.data.items?.[0]?.contentDetails?.duration || ''
+            const seconds = parseDuration(duration)
+            
+            // Only count if longer than 60 seconds (not a Short)
+            if (seconds > 60) {
+              longFormCount++
+            }
+          }
+        }
+      }
+      
+      if (foundOlder || !response.data.nextPageToken) {
+        break
+      }
+      
+      pageToken = response.data.nextPageToken
+    }
+    
+    return longFormCount
+  } catch (error) {
+    console.error('YouTube Video Count error:', error)
+    return 0
+  }
+}
+
+// Parse ISO 8601 duration (e.g., PT1H2M3S) to seconds
+function parseDuration(duration: string): number {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+  if (!match) return 0
+  
+  const hours = parseInt(match[1] || '0', 10)
+  const minutes = parseInt(match[2] || '0', 10)
+  const seconds = parseInt(match[3] || '0', 10)
+  
+  return hours * 3600 + minutes * 60 + seconds
+}

@@ -28,9 +28,11 @@ interface AnalyticsChartProps {
   isLoading?: boolean
   activeMetric: MetricKey
   showUSTax?: boolean
+  showProfit?: boolean
   usTaxRate?: number
   totalUSRevenue?: number
   totalRevenue?: number
+  totalVideoCosts?: number
 }
 
 const METRICS = {
@@ -45,30 +47,45 @@ export function AnalyticsChart({
   isLoading = false, 
   activeMetric,
   showUSTax = false,
+  showProfit = false,
   usTaxRate = 0.15,
   totalUSRevenue = 0,
   totalRevenue = 0,
+  totalVideoCosts = 0,
 }: AnalyticsChartProps) {
   const currentMetric = METRICS[activeMetric]
   
   // Calculate US revenue ratio for proportional daily tax deduction
   const usRevenueRatio = totalRevenue > 0 ? totalUSRevenue / totalRevenue : 0
+  
+  // Calculate video costs ratio for proportional daily cost deduction
+  const videoCostsRatio = totalRevenue > 0 ? totalVideoCosts / totalRevenue : 0
 
-  // Transform data based on US tax toggle
+  // Transform data based on US tax and profit toggles
   const transformedData = useMemo(() => {
-    if (!showUSTax) return data
+    if (!showUSTax && !showProfit) return data
     
     return data.map(point => {
+      let adjustedRevenue = point.estimatedRevenue
+      
       // Apply US tax deduction to revenue
-      const dailyUSRevenue = point.estimatedRevenue * usRevenueRatio
-      const adjustedRevenue = point.estimatedRevenue - (dailyUSRevenue * usTaxRate)
+      if (showUSTax) {
+        const dailyUSRevenue = point.estimatedRevenue * usRevenueRatio
+        adjustedRevenue = adjustedRevenue - (dailyUSRevenue * usTaxRate)
+      }
+      
+      // Apply video costs deduction (proportionally distributed across days)
+      if (showProfit && totalVideoCosts > 0) {
+        const dailyCosts = point.estimatedRevenue * videoCostsRatio
+        adjustedRevenue = adjustedRevenue - dailyCosts
+      }
       
       return {
         ...point,
         estimatedRevenue: adjustedRevenue,
       }
     })
-  }, [data, showUSTax, usRevenueRatio, usTaxRate])
+  }, [data, showUSTax, showProfit, usRevenueRatio, usTaxRate, videoCostsRatio, totalVideoCosts])
 
   // Format for Y-axis (shortened)
   const formatAxisValue = (value: number) => {

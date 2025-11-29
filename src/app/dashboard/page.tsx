@@ -35,6 +35,7 @@ interface AnalyticsData {
     usRevenue: number
     usTaxAmount: number
     adjustedRevenue: number
+    longFormVideoCount: number
     rpm: number
     viewsChange: number
     watchTimeChange: number
@@ -59,6 +60,7 @@ interface AnalyticsData {
     netSubscribers: number
     estimatedRevenue: number
     usRevenue: number
+    longFormVideoCount: number
     rpm: number
     previousViews: number
     previousWatchTime: number
@@ -86,6 +88,8 @@ function DashboardContent() {
   const [customDateRange, setCustomDateRange] = useState<{ startDate?: string; endDate?: string }>({})
   const [activeMetric, setActiveMetric] = useState<MetricKey>('views')
   const [showUSTax, setShowUSTax] = useState(false)
+  const [showProfit, setShowProfit] = useState(false)
+  const [costPerVideo, setCostPerVideo] = useState<Record<string, number>>({})  // channelId -> cost
   
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
@@ -264,8 +268,23 @@ function DashboardContent() {
                 </button>
               </div>
               
-              {/* US Tax Toggle */}
+              {/* Toggles */}
               <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => setShowProfit(!showProfit)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    showProfit 
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
+                      : 'bg-yt-bg-tertiary text-yt-text-secondary hover:text-yt-text border border-transparent'
+                  }`}
+                >
+                  <span className="text-base">💰</span>
+                  <span>Profit Mode</span>
+                  <span className={`w-8 h-5 rounded-full relative transition-colors ${showProfit ? 'bg-green-500' : 'bg-yt-bg-hover'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${showProfit ? 'left-3.5' : 'left-0.5'}`} />
+                  </span>
+                </button>
+                
                 <button
                   onClick={() => setShowUSTax(!showUSTax)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
@@ -334,11 +353,26 @@ function DashboardContent() {
                 accentColor="#9333ea"
               />
               <StatsCard
-                title={showUSTax ? "Revenue (after US tax)" : "Revenue"}
-                value={showUSTax 
-                  ? (analytics?.summary.adjustedRevenue?.toFixed(2) || '0.00')
-                  : (analytics?.summary.estimatedRevenue?.toFixed(2) || '0.00')
-                }
+                title={showProfit ? "Profit (approx)" : (showUSTax ? "Revenue (after US tax)" : "Revenue")}
+                value={(() => {
+                  let revenue = analytics?.summary.estimatedRevenue || 0
+                  
+                  // Apply US tax if enabled
+                  if (showUSTax) {
+                    revenue = analytics?.summary.adjustedRevenue || 0
+                  }
+                  
+                  // Apply video costs if profit mode enabled
+                  if (showProfit && analytics?.channelBreakdown) {
+                    const totalCosts = analytics.channelBreakdown.reduce((sum, channel) => {
+                      const cost = costPerVideo[channel.channelId] || 0
+                      return sum + (cost * channel.longFormVideoCount)
+                    }, 0)
+                    revenue = revenue - totalCosts
+                  }
+                  
+                  return revenue.toFixed(2)
+                })()}
                 change={analytics?.summary.revenueChange}
                 changeLabel="vs previous period"
                 icon={<DollarSign className="w-5 h-5" />}
@@ -364,9 +398,16 @@ function DashboardContent() {
                 isLoading={isLoadingAnalytics}
                 activeMetric={activeMetric}
                 showUSTax={showUSTax}
+                showProfit={showProfit}
                 usTaxRate={0.15}
                 totalUSRevenue={analytics?.summary.usRevenue || 0}
                 totalRevenue={analytics?.summary.estimatedRevenue || 0}
+                totalVideoCosts={showProfit && analytics?.channelBreakdown ? 
+                  analytics.channelBreakdown.reduce((sum, channel) => {
+                    const cost = costPerVideo[channel.channelId] || 0
+                    return sum + (cost * channel.longFormVideoCount)
+                  }, 0) : 0
+                }
               />
             </div>
 
@@ -376,6 +417,11 @@ function DashboardContent() {
                 channels={analytics.channelBreakdown}
                 isLoading={isLoadingAnalytics}
                 showUSTax={showUSTax}
+                showProfit={showProfit}
+                costPerVideo={costPerVideo}
+                onCostChange={(channelId, cost) => {
+                  setCostPerVideo(prev => ({ ...prev, [channelId]: cost }))
+                }}
               />
             )}
           </>

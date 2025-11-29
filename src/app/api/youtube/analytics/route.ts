@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase-server'
-import { getYouTubeAnalytics, getRevenueByCountry, refreshAccessToken } from '@/lib/google'
+import { getYouTubeAnalytics, getRevenueByCountry, getLongFormVideoCount, refreshAccessToken } from '@/lib/google'
 import { format, subDays, parseISO } from 'date-fns'
 
 // Force dynamic rendering - no caching
@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
   const analyticsResults = []
   const previousResults = []
   const countryRevenueResults = []
+  const videoCountResults = []
   
   for (const channel of channels) {
     let accessToken = channel.access_token
@@ -120,6 +121,14 @@ export async function GET(request: NextRequest) {
         endDate
       )
       
+      // Get long-form video count for the period
+      const longFormVideoCount = await getLongFormVideoCount(
+        accessToken,
+        channel.channel_id,
+        startDate,
+        endDate
+      )
+      
       if (analytics) {
         analyticsResults.push({
           channelId: channel.id,
@@ -143,13 +152,18 @@ export async function GET(request: NextRequest) {
           data: countryRevenue,
         })
       }
+      
+      videoCountResults.push({
+        channelId: channel.id,
+        longFormVideoCount: longFormVideoCount || 0,
+      })
     } catch (error) {
       console.error(`Failed to get analytics for channel ${channel.channel_id}:`, error)
     }
   }
   
   // Process and combine analytics data
-  const processedData = processAnalyticsData(analyticsResults, previousResults, countryRevenueResults)
+  const processedData = processAnalyticsData(analyticsResults, previousResults, countryRevenueResults, videoCountResults)
   
   return NextResponse.json({
     analytics: processedData,
@@ -165,7 +179,8 @@ export async function GET(request: NextRequest) {
 function processAnalyticsData(
   currentResults: any[],
   previousResults: any[],
-  countryRevenueResults: any[]
+  countryRevenueResults: any[],
+  videoCountResults: any[]
 ) {
   const channelBreakdown = []
   const dailyDataMap = new Map<string, any>()
@@ -176,6 +191,7 @@ function processAnalyticsData(
   let totalSubscribersLost = 0
   let totalRevenue = 0
   let totalUSRevenue = 0
+  let totalLongFormVideos = 0
   
   let prevTotalViews = 0
   let prevTotalWatchTime = 0
@@ -230,12 +246,17 @@ function processAnalyticsData(
       }
     }
     
+    // Get video count for this channel
+    const videoCountResult = videoCountResults.find(v => v.channelId === result.channelId)
+    const channelLongFormVideos = videoCountResult?.longFormVideoCount || 0
+    
     totalViews += channelViews
     totalWatchTimeMinutes += channelWatchTime
     totalSubscribersGained += channelSubsGained
     totalSubscribersLost += channelSubsLost
     totalRevenue += channelRevenue
     totalUSRevenue += channelUSRevenue
+    totalLongFormVideos += channelLongFormVideos
     
     // Find previous period data for this channel
     const prevResult = previousResults.find(p => p.channelId === result.channelId)
@@ -265,6 +286,7 @@ function processAnalyticsData(
       netSubscribers: channelSubsGained - channelSubsLost,
       estimatedRevenue: channelRevenue,
       usRevenue: channelUSRevenue,
+      longFormVideoCount: channelLongFormVideos,
       rpm: channelViews > 0 ? (channelRevenue / channelViews) * 1000 : 0,
       previousViews: prevChannelViews,
       previousWatchTime: prevChannelWatchTime,
@@ -307,6 +329,7 @@ function processAnalyticsData(
       usRevenue: totalUSRevenue,
       usTaxAmount,
       adjustedRevenue,
+      longFormVideoCount: totalLongFormVideos,
       rpm: totalViews > 0 ? (totalRevenue / totalViews) * 1000 : 0,
       // Comparison with previous period
       viewsChange: totalViews - prevTotalViews,
