@@ -41,6 +41,9 @@ export async function GET(request: NextRequest) {
   }
   
   // Calculate date range
+  // YouTube API has a 2-3 day delay, so we need to go back further to get the requested number of days
+  const API_DELAY_DAYS = 3
+  
   let endDate: string
   let startDate: string
   let previousStartDate: string
@@ -55,10 +58,12 @@ export async function GET(request: NextRequest) {
     previousEndDate = format(subDays(parseISO(startDate), 1), 'yyyy-MM-dd')
     previousStartDate = format(subDays(parseISO(startDate), daysDiff + 1), 'yyyy-MM-dd')
   } else {
-    endDate = format(new Date(), 'yyyy-MM-dd') // Today (API returns what's available)
-    startDate = format(subDays(new Date(), days), 'yyyy-MM-dd')
-    previousEndDate = format(subDays(new Date(), days), 'yyyy-MM-dd')
-    previousStartDate = format(subDays(new Date(), days * 2), 'yyyy-MM-dd')
+    // End date is today (API will return up to what's available, ~3 days ago)
+    endDate = format(new Date(), 'yyyy-MM-dd')
+    // Start date goes back (days + API_DELAY_DAYS) to ensure we get 'days' worth of data
+    startDate = format(subDays(new Date(), days + API_DELAY_DAYS - 1), 'yyyy-MM-dd')
+    previousEndDate = format(subDays(new Date(), days + API_DELAY_DAYS), 'yyyy-MM-dd')
+    previousStartDate = format(subDays(new Date(), (days * 2) + API_DELAY_DAYS - 1), 'yyyy-MM-dd')
   }
   
   const analyticsResults = []
