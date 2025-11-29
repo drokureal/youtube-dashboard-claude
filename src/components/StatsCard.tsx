@@ -66,13 +66,13 @@ export function StatsCard({
 
   if (isLoading) {
     return (
-      <div className="bg-yt-bg-secondary rounded-xl p-5 border border-yt-border">
-        <div className="flex items-center justify-between mb-3">
-          <div className="h-4 w-24 bg-yt-bg-tertiary rounded animate-pulse"></div>
+      <div className="bg-yt-bg-secondary rounded-xl p-3 sm:p-5 border border-yt-border">
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <div className="h-3 sm:h-4 w-16 sm:w-24 bg-yt-bg-tertiary rounded animate-pulse"></div>
           {icon && <div className="text-yt-text-secondary opacity-50">{icon}</div>}
         </div>
-        <div className="h-8 w-32 bg-yt-bg-tertiary rounded animate-pulse mb-2"></div>
-        <div className="h-3 w-28 bg-yt-bg-tertiary rounded animate-pulse"></div>
+        <div className="h-6 sm:h-8 w-20 sm:w-32 bg-yt-bg-tertiary rounded animate-pulse mb-2"></div>
+        <div className="h-3 w-16 sm:w-28 bg-yt-bg-tertiary rounded animate-pulse"></div>
       </div>
     )
   }
@@ -80,7 +80,7 @@ export function StatsCard({
   return (
     <div 
       onClick={onClick}
-      className={`bg-yt-bg-secondary rounded-xl p-5 border-2 transition-all cursor-pointer ${
+      className={`bg-yt-bg-secondary rounded-xl p-3 sm:p-5 border-2 transition-all cursor-pointer ${
         isActive 
           ? 'border-opacity-100' 
           : 'border-yt-border hover:border-yt-border/80'
@@ -91,14 +91,14 @@ export function StatsCard({
     >
       <div className="flex items-center justify-between mb-1">
         <span 
-          className={`text-sm font-medium ${isActive ? '' : 'text-yt-text-secondary'}`}
+          className={`text-xs sm:text-sm font-medium ${isActive ? '' : 'text-yt-text-secondary'}`}
           style={{ color: isActive ? accentColor : undefined }}
         >
           {title}
         </span>
         {icon && (
           <div 
-            className={isActive ? '' : 'text-yt-text-secondary'}
+            className={`hidden sm:block ${isActive ? '' : 'text-yt-text-secondary'}`}
             style={{ color: isActive ? accentColor : undefined }}
           >
             {icon}
@@ -106,15 +106,15 @@ export function StatsCard({
         )}
       </div>
       <div className="flex items-baseline gap-1 mb-1">
-        {prefix && <span className="text-xl text-yt-text-secondary">{prefix}</span>}
-        <span className="text-3xl font-medium text-yt-text">{formatValue(value)}</span>
-        {suffix && <span className="text-lg text-yt-text-secondary">{suffix}</span>}
+        {prefix && <span className="text-base sm:text-xl text-yt-text-secondary">{prefix}</span>}
+        <span className="text-xl sm:text-3xl font-medium text-yt-text">{formatValue(value)}</span>
+        {suffix && <span className="text-sm sm:text-lg text-yt-text-secondary">{suffix}</span>}
       </div>
       {change !== undefined && (
-        <div className={`flex items-center gap-1 text-xs ${getChangeColor()}`}>
+        <div className={`flex items-center gap-1 text-[10px] sm:text-xs ${getChangeColor()}`}>
           {getChangeIcon()}
           <span>
-            {change >= 0 ? '+' : '-'}{formatChange(change)} {changeLabel || 'vs previous period'}
+            {change >= 0 ? '+' : '-'}{formatChange(change)}
           </span>
         </div>
       )}

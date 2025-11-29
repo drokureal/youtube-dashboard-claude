@@ -100,11 +100,11 @@ export function AnalyticsChart({ data, isLoading = false, activeMetric }: Analyt
   }
 
   return (
-    <div className="bg-yt-bg-secondary rounded-xl p-6 border border-yt-border">
+    <div className="bg-yt-bg-secondary rounded-xl p-4 sm:p-6 border border-yt-border">
       {/* Chart */}
-      <div className="h-[300px]">
+      <div className="h-[200px] sm:h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id={`gradient-${activeMetric}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={currentMetric.color} stopOpacity={0.6} />
@@ -116,19 +116,19 @@ export function AnalyticsChart({ data, isLoading = false, activeMetric }: Analyt
               dataKey="date"
               tickFormatter={formatXAxis}
               stroke="#aaaaaa"
-              tick={{ fill: '#aaaaaa', fontSize: 12 }}
+              tick={{ fill: '#aaaaaa', fontSize: 10 }}
               axisLine={{ stroke: '#3f3f3f' }}
               tickLine={{ stroke: '#3f3f3f' }}
               interval="preserveStartEnd"
-              minTickGap={50}
+              minTickGap={30}
             />
             <YAxis
               tickFormatter={formatAxisValue}
               stroke="#aaaaaa"
-              tick={{ fill: '#aaaaaa', fontSize: 12 }}
+              tick={{ fill: '#aaaaaa', fontSize: 10 }}
               axisLine={{ stroke: '#3f3f3f' }}
               tickLine={{ stroke: '#3f3f3f' }}
-              width={60}
+              width={45}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area

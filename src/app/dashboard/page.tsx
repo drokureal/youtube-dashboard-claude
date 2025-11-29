@@ -205,7 +205,7 @@ function DashboardContent() {
     <div className="min-h-screen bg-yt-bg">
       <Header user={user} onAddChannel={handleAddChannel} isLoading={isLoadingUser} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Success Message */}
         {channelAdded && (
           <div className="mb-6 p-4 bg-green-900/30 border border-green-500/50 rounded-lg flex items-center gap-3">
@@ -236,8 +236,8 @@ function DashboardContent() {
         ) : (
           <>
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4 mb-6 sm:mb-8">
+              <div className="flex flex-wrap items-center gap-3">
                 <ChannelSelector
                   channels={channels}
                   selectedChannel={selectedChannel}
@@ -249,15 +249,15 @@ function DashboardContent() {
                   onSelect={handleDateRangeChange}
                   isLoading={isLoadingChannels}
                 />
+                <button
+                  onClick={handleRefresh}
+                  disabled={isLoadingAnalytics}
+                  className="flex items-center gap-2 text-sm text-yt-text-secondary hover:text-yt-text transition-colors disabled:opacity-50 ml-auto"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoadingAnalytics ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
               </div>
-              <button
-                onClick={handleRefresh}
-                disabled={isLoadingAnalytics}
-                className="flex items-center gap-2 text-sm text-yt-text-secondary hover:text-yt-text transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoadingAnalytics ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
             </div>
 
             {/* Error State */}
@@ -269,7 +269,7 @@ function DashboardContent() {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
               <StatsCard
                 title="Views"
                 value={analytics?.summary.views || 0}
@@ -282,11 +282,12 @@ function DashboardContent() {
                 accentColor="#3ea6ff"
               />
               <StatsCard
-                title="Watch time (hours)"
+                title="Watch time"
                 value={analytics?.summary.watchTimeHours || 0}
                 change={analytics?.summary.watchTimeChange}
                 changeLabel="vs previous period"
                 icon={<Clock className="w-5 h-5" />}
+                suffix="h"
                 isLoading={isLoadingAnalytics}
                 isActive={activeMetric === 'watchTimeMinutes'}
                 onClick={() => setActiveMetric('watchTimeMinutes')}
@@ -305,7 +306,7 @@ function DashboardContent() {
                 accentColor="#9333ea"
               />
               <StatsCard
-                title="Estimated revenue"
+                title="Revenue"
                 value={analytics?.summary.estimatedRevenue?.toFixed(2) || '0.00'}
                 change={analytics?.summary.revenueChange}
                 changeLabel="vs previous period"
@@ -326,7 +327,7 @@ function DashboardContent() {
             </div>
 
             {/* Chart */}
-            <div className="mb-8">
+            <div className="mb-6 sm:mb-8">
               <AnalyticsChart
                 data={analytics?.dailyData || []}
                 isLoading={isLoadingAnalytics}
