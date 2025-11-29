@@ -36,10 +36,6 @@ interface AnalyticsData {
     usTaxAmount: number
     adjustedRevenue: number
     rpm: number
-    longFormViews: number
-    longFormWatchTimeHours: number
-    shortsViews: number
-    shortsWatchTimeHours: number
     viewsChange: number
     watchTimeChange: number
     subscribersChange: number
@@ -52,10 +48,6 @@ interface AnalyticsData {
     netSubscribers: number
     estimatedRevenue: number
     rpm: number
-    longFormViews: number
-    longFormWatchTime: number
-    shortsViews: number
-    shortsWatchTime: number
   }>
   channelBreakdown: Array<{
     channelId: string
@@ -94,7 +86,6 @@ function DashboardContent() {
   const [customDateRange, setCustomDateRange] = useState<{ startDate?: string; endDate?: string }>({})
   const [activeMetric, setActiveMetric] = useState<MetricKey>('views')
   const [showUSTax, setShowUSTax] = useState(false)
-  const [includeShorts, setIncludeShorts] = useState(false)
   
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [isLoadingChannels, setIsLoadingChannels] = useState(true)
@@ -276,22 +267,6 @@ function DashboardContent() {
               {/* US Tax Toggle */}
               <div className="flex flex-wrap items-center gap-3">
                 <button
-                  onClick={() => setIncludeShorts(!includeShorts)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                    includeShorts 
-                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50' 
-                      : 'bg-yt-bg-tertiary text-yt-text-secondary hover:text-yt-text border border-transparent'
-                  }`}
-                >
-                  <span className="text-base">📱</span>
-                  <span className="hidden sm:inline">{includeShorts ? 'Long-form + Shorts' : 'Long-form Only'}</span>
-                  <span className="sm:hidden">{includeShorts ? '+Shorts' : 'Long'}</span>
-                  <span className={`w-8 h-5 rounded-full relative transition-colors ${includeShorts ? 'bg-purple-500' : 'bg-yt-bg-hover'}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${includeShorts ? 'left-3.5' : 'left-0.5'}`} />
-                  </span>
-                </button>
-                
-                <button
                   onClick={() => setShowUSTax(!showUSTax)}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                     showUSTax 
@@ -325,10 +300,7 @@ function DashboardContent() {
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
               <StatsCard
                 title="Views"
-                value={includeShorts 
-                  ? (analytics?.summary.views || 0)
-                  : (analytics?.summary.longFormViews || 0)
-                }
+                value={analytics?.summary.views || 0}
                 change={analytics?.summary.viewsChange}
                 changeLabel="vs previous period"
                 icon={<Eye className="w-5 h-5" />}
@@ -339,10 +311,7 @@ function DashboardContent() {
               />
               <StatsCard
                 title="Watch time"
-                value={includeShorts 
-                  ? (analytics?.summary.watchTimeHours || 0)
-                  : (analytics?.summary.longFormWatchTimeHours || 0)
-                }
+                value={analytics?.summary.watchTimeHours || 0}
                 change={analytics?.summary.watchTimeChange}
                 changeLabel="vs previous period"
                 icon={<Clock className="w-5 h-5" />}
@@ -395,7 +364,6 @@ function DashboardContent() {
                 isLoading={isLoadingAnalytics}
                 activeMetric={activeMetric}
                 showUSTax={showUSTax}
-                includeShorts={includeShorts}
                 usTaxRate={0.15}
                 totalUSRevenue={analytics?.summary.usRevenue || 0}
                 totalRevenue={analytics?.summary.estimatedRevenue || 0}

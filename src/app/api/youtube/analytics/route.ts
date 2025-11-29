@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase-server'
-import { getYouTubeAnalytics, getRevenueByCountry, getAnalyticsByContentType, refreshAccessToken } from '@/lib/google'
+import { getYouTubeAnalytics, getRevenueByCountry, refreshAccessToken } from '@/lib/google'
 import { format, subDays, parseISO } from 'date-fns'
 
 // Force dynamic rendering - no caching
@@ -69,7 +69,6 @@ export async function GET(request: NextRequest) {
   const analyticsResults = []
   const previousResults = []
   const countryRevenueResults = []
-  const contentTypeResults = []
   
   for (const channel of channels) {
     let accessToken = channel.access_token
@@ -121,14 +120,6 @@ export async function GET(request: NextRequest) {
         endDate
       )
       
-      // Get analytics by content type (shorts vs long-form)
-      const contentTypeData = await getAnalyticsByContentType(
-        accessToken,
-        channel.channel_id,
-        startDate,
-        endDate
-      )
-      
       if (analytics) {
         analyticsResults.push({
           channelId: channel.id,
@@ -152,20 +143,13 @@ export async function GET(request: NextRequest) {
           data: countryRevenue,
         })
       }
-      
-      if (contentTypeData) {
-        contentTypeResults.push({
-          channelId: channel.id,
-          data: contentTypeData,
-        })
-      }
     } catch (error) {
       console.error(`Failed to get analytics for channel ${channel.channel_id}:`, error)
     }
   }
   
   // Process and combine analytics data
-  const processedData = processAnalyticsData(analyticsResults, previousResults, countryRevenueResults, contentTypeResults)
+  const processedData = processAnalyticsData(analyticsResults, previousResults, countryRevenueResults)
   
   return NextResponse.json({
     analytics: processedData,
@@ -181,8 +165,7 @@ export async function GET(request: NextRequest) {
 function processAnalyticsData(
   currentResults: any[],
   previousResults: any[],
-  countryRevenueResults: any[],
-  contentTypeResults: any[]
+  countryRevenueResults: any[]
 ) {
   const channelBreakdown = []
   const dailyDataMap = new Map<string, any>()
@@ -194,46 +177,10 @@ function processAnalyticsData(
   let totalRevenue = 0
   let totalUSRevenue = 0
   
-  // Content type totals
-  let totalLongFormViews = 0
-  let totalLongFormWatchTime = 0
-  let totalShortsViews = 0
-  let totalShortsWatchTime = 0
-  
   let prevTotalViews = 0
   let prevTotalWatchTime = 0
   let prevTotalSubscribers = 0
   let prevTotalRevenue = 0
-  
-  // Process content type data first to build daily breakdown by date
-  // Key format: "channelId:date"
-  const contentTypeDataMap = new Map<string, any>()
-  
-  for (const result of contentTypeResults) {
-    const rows = result.data?.rows || []
-    for (const row of rows) {
-      const [date, contentType, views, watchTime] = row
-      const key = `${result.channelId}:${date}`
-      
-      const existing = contentTypeDataMap.get(key) || {
-        longFormViews: 0,
-        longFormWatchTime: 0,
-        shortsViews: 0,
-        shortsWatchTime: 0,
-      }
-      
-      // VIDEO_ON_DEMAND = long-form, SHORTS = shorts, LIVE_STREAM = live
-      if (contentType === 'VIDEO_ON_DEMAND' || contentType === 'LIVE_STREAM') {
-        existing.longFormViews += views || 0
-        existing.longFormWatchTime += watchTime || 0
-      } else if (contentType === 'SHORTS') {
-        existing.shortsViews += views || 0
-        existing.shortsWatchTime += watchTime || 0
-      }
-      
-      contentTypeDataMap.set(key, existing)
-    }
-  }
   
   // Process current period data
   for (const result of currentResults) {
@@ -254,21 +201,6 @@ function processAnalyticsData(
       channelSubsLost += subsLost || 0
       channelRevenue += revenue || 0
       
-      // Get content type breakdown for this channel and date
-      const contentTypeKey = `${result.channelId}:${date}`
-      const contentTypeData = contentTypeDataMap.get(contentTypeKey) || {
-        longFormViews: views || 0,  // Fallback to total views if no content type data
-        longFormWatchTime: watchTime || 0,
-        shortsViews: 0,
-        shortsWatchTime: 0,
-      }
-      
-      // Add to totals
-      totalLongFormViews += contentTypeData.longFormViews
-      totalLongFormWatchTime += contentTypeData.longFormWatchTime
-      totalShortsViews += contentTypeData.shortsViews
-      totalShortsWatchTime += contentTypeData.shortsWatchTime
-      
       // Aggregate daily data
       const existing = dailyDataMap.get(date) || {
         date,
@@ -277,10 +209,6 @@ function processAnalyticsData(
         subscribersGained: 0,
         subscribersLost: 0,
         estimatedRevenue: 0,
-        longFormViews: 0,
-        longFormWatchTime: 0,
-        shortsViews: 0,
-        shortsWatchTime: 0,
       }
       
       existing.views += views || 0
@@ -288,10 +216,6 @@ function processAnalyticsData(
       existing.subscribersGained += subsGained || 0
       existing.subscribersLost += subsLost || 0
       existing.estimatedRevenue += revenue || 0
-      existing.longFormViews += contentTypeData.longFormViews
-      existing.longFormWatchTime += contentTypeData.longFormWatchTime
-      existing.shortsViews += contentTypeData.shortsViews
-      existing.shortsWatchTime += contentTypeData.shortsWatchTime
       
       dailyDataMap.set(date, existing)
     }
@@ -354,14 +278,6 @@ function processAnalyticsData(
     prevTotalRevenue += prevChannelRevenue
   }
   
-  // Process previous period totals
-  for (const result of previousResults) {
-    const rows = result.data.rows || []
-    for (const row of rows) {
-      // Already processed above
-    }
-  }
-  
   const netSubscribers = totalSubscribersGained - totalSubscribersLost
   
   // Sort daily data by date
@@ -392,11 +308,6 @@ function processAnalyticsData(
       usTaxAmount,
       adjustedRevenue,
       rpm: totalViews > 0 ? (totalRevenue / totalViews) * 1000 : 0,
-      // Content type breakdown
-      longFormViews: totalLongFormViews,
-      longFormWatchTimeHours: Math.round(totalLongFormWatchTime / 60),
-      shortsViews: totalShortsViews,
-      shortsWatchTimeHours: Math.round(totalShortsWatchTime / 60),
       // Comparison with previous period
       viewsChange: totalViews - prevTotalViews,
       watchTimeChange: Math.round((totalWatchTimeMinutes - prevTotalWatchTime) / 60),

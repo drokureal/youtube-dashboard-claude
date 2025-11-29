@@ -19,10 +19,6 @@ interface DataPoint {
   netSubscribers: number
   estimatedRevenue: number
   rpm: number
-  longFormViews: number
-  longFormWatchTime: number
-  shortsViews: number
-  shortsWatchTime: number
 }
 
 export type MetricKey = 'views' | 'watchTimeMinutes' | 'netSubscribers' | 'estimatedRevenue'
@@ -32,7 +28,6 @@ interface AnalyticsChartProps {
   isLoading?: boolean
   activeMetric: MetricKey
   showUSTax?: boolean
-  includeShorts?: boolean
   usTaxRate?: number
   totalUSRevenue?: number
   totalRevenue?: number
@@ -50,7 +45,6 @@ export function AnalyticsChart({
   isLoading = false, 
   activeMetric,
   showUSTax = false,
-  includeShorts = false,
   usTaxRate = 0.15,
   totalUSRevenue = 0,
   totalRevenue = 0,
@@ -60,34 +54,21 @@ export function AnalyticsChart({
   // Calculate US revenue ratio for proportional daily tax deduction
   const usRevenueRatio = totalRevenue > 0 ? totalUSRevenue / totalRevenue : 0
 
-  // Transform data based on toggles
+  // Transform data based on US tax toggle
   const transformedData = useMemo(() => {
+    if (!showUSTax) return data
+    
     return data.map(point => {
-      let views = point.views
-      let watchTimeMinutes = point.watchTimeMinutes
-      let estimatedRevenue = point.estimatedRevenue
-      
-      // Apply content type filter (only for views and watch time)
-      if (!includeShorts) {
-        views = point.longFormViews || 0
-        watchTimeMinutes = point.longFormWatchTime || 0
-      }
-      
       // Apply US tax deduction to revenue
-      if (showUSTax) {
-        // Estimate daily US revenue proportionally and deduct 15%
-        const dailyUSRevenue = estimatedRevenue * usRevenueRatio
-        estimatedRevenue = estimatedRevenue - (dailyUSRevenue * usTaxRate)
-      }
+      const dailyUSRevenue = point.estimatedRevenue * usRevenueRatio
+      const adjustedRevenue = point.estimatedRevenue - (dailyUSRevenue * usTaxRate)
       
       return {
         ...point,
-        views,
-        watchTimeMinutes,
-        estimatedRevenue,
+        estimatedRevenue: adjustedRevenue,
       }
     })
-  }, [data, includeShorts, showUSTax, usRevenueRatio, usTaxRate])
+  }, [data, showUSTax, usRevenueRatio, usTaxRate])
 
   // Format for Y-axis (shortened)
   const formatAxisValue = (value: number) => {

@@ -148,33 +148,3 @@ export async function getRevenueByCountry(
     return null
   }
 }
-
-export async function getAnalyticsByContentType(
-  accessToken: string,
-  channelId: string,
-  startDate: string,
-  endDate: string
-) {
-  const oauth2Client = getOAuth2Client()
-  oauth2Client.setCredentials({ access_token: accessToken })
-  
-  const youtubeAnalytics = google.youtubeAnalytics({ version: 'v2', auth: oauth2Client })
-  
-  try {
-    // Get daily data broken down by content type
-    const { data } = await youtubeAnalytics.reports.query({
-      ids: `channel==${channelId}`,
-      startDate,
-      endDate,
-      metrics: 'views,estimatedMinutesWatched',
-      dimensions: 'day,creatorContentType',
-      sort: 'day',
-    })
-    
-    console.log(`Content type data for ${channelId}:`, JSON.stringify(data?.rows?.slice(0, 3)))
-    return data
-  } catch (error: any) {
-    console.error('YouTube Analytics Content Type error:', error?.message || error)
-    return null
-  }
-}
